@@ -1,0 +1,11 @@
+yfinance
+nltk
+pandas
+numpy
+scikit-learn
+tensorflow
+pandas_datareader
+newsapi-python
+transformers
+scipy
+torch
