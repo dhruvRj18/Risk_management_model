@@ -12,7 +12,7 @@ if __name__ == "__main__":
         print(f"{indicator}:")
         print(data.tail())
 
-    api_key = 'fd756b8b451b492aa863abe017d5192c'
+    api_key = '<api_key>'
     sentiments = fetch_and_analyze_sentiment('nvda', api_key)
     for headline, vader_score, final_score in sentiments:
         print(
