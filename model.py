@@ -1,62 +1,67 @@
 import numpy as np
+import pandas as pd
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-from data_collection.get_portfolio_data import \
-    feature_data  # Ensure this import is correct based on your project structure
+import matplotlib.pyplot as plt
 
 
-# Function to create LSTM model
-def create_lstm_model(input_shape):
-    model = Sequential()
-    model.add(LSTM(50, return_sequences=True, input_shape=input_shape))
-    model.add(Dropout(0.2))
-    model.add(LSTM(50, return_sequences=False))
-    model.add(Dropout(0.2))
-    model.add(Dense(25))
-    model.add(Dense(1))
+def train_and_evaluate_model(merged_data):
+    # Normalize the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(merged_data)
+
+    # Create sequences for LSTM
+    def create_sequences(data, seq_length):
+        xs, ys = [], []
+        for i in range(len(data) - seq_length):
+            x = data[i:i+seq_length]
+            y = data[i+seq_length, 0]  # Assuming the target variable is the first column
+            xs.append(x)
+            ys.append(y)
+        return np.array(xs), np.array(ys)
+
+    seq_length = 60  # Number of time steps to look back
+    X, y = create_sequences(scaled_data, seq_length)
+
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+    # Build LSTM model
+    model = Sequential([
+        LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])),
+        Dropout(0.2),
+        LSTM(50, return_sequences=False),
+        Dropout(0.2),
+        Dense(25),
+        Dense(1)
+    ])
+
     model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
 
+    # Train the model
+    history = model.fit(X_train, y_train, batch_size=32, epochs=50, validation_data=(X_test, y_test))
 
-# Example shape: (number of time steps, number of features)
-input_shape = (50, 3)
+    # Evaluate the model
+    loss = model.evaluate(X_test, y_test)
+    print(f'Test Loss: {loss}')
 
-# Create model
-model = create_lstm_model(input_shape)
+    # Predict and inverse transform the predictions
+    predictions = model.predict(X_test)
+    predictions = scaler.inverse_transform(predictions)
 
+    # Compare predictions with actual values
+    actual_values = scaler.inverse_transform(y_test.reshape(-1, 1))
 
-def prepare_training_data(data, lookback=50):
-    X, y = [], []
-    for i in range(lookback, len(data)):
-        X.append(data[i - lookback:i])
-        y.append(data[i, 0])  # Assuming 'Close' is the first feature
-    return np.array(X), np.array(y)
+    # Plotting the results
 
-
-ticker = "NVDA"
-data = feature_data[ticker][['Close', 'SMA_50', 'Volatility']].dropna().values
-
-X, y = prepare_training_data(data)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-model.fit(X_train, y_train, batch_size=32, epochs=10, validation_data=(X_test, y_test))
-
-
-def calculate_var(returns, confidence_level=0.95):
-    var = np.percentile(returns, (1 - confidence_level) * 100)
-    return var
-
-
-def calculate_cvar(returns, var):
-    cvar = returns[returns <= var].mean()
-    return cvar
-
-
-returns = np.diff(np.log(data[:, 0]))
-
-var = calculate_var(returns)
-cvar = calculate_cvar(returns, var)
-
-print(f"VaR: {var}")
-print(f"CVaR: {cvar}")
+    plt.figure(figsize=(14, 5))
+    plt.plot(actual_values, color='blue', label='Actual Values')
+    plt.plot(predictions, color='red', label='Predicted Values')
+    plt.title('Prediction vs Actual')
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.show()

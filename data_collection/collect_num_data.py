@@ -11,13 +11,16 @@ def get_historical_prices(ticker):
 
 def get_dividends_and_earnings(ticker):
     stock = yf.Ticker(ticker)
-    dividends = stock.dividends
-    earnings = stock.earnings
-    return dividends, earnings
+    try:
+        dividends = stock.dividends
+        earnings = stock.earnings
+        return dividends
+    except Exception as e:
+        print(e)
 
 
 def get_economic_indicators(indicator_id):
-    start = datetime.datetime(1900, 1, 1)
+    start = datetime.datetime(1992, 1, 1)
     end = datetime.datetime.now()
     data = web.DataReader(indicator_id, 'fred', start, end)
     return data
