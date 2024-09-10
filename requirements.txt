@@ -9,3 +9,5 @@ newsapi-python
 transformers
 scipy
 torch
+jupyter
+matplotlib
