@@ -8,6 +8,6 @@ pandas_datareader
 newsapi-python
 transformers
 scipy
-torch
 jupyter
 matplotlib
+keras-tuner
